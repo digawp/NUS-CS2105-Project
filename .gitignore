@@ -1,4 +1,5 @@
 *.class
 *.mp3
 *.pdf
-
+test/
+out/
