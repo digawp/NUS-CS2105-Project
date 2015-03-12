@@ -13,10 +13,10 @@ class FileSender {
 
     public static void main(String[] args) {
 
-        // check if the number of command line argument is 4
-        if (args.length != 4) {
+        // check if the number of command line argument is 3
+        if (args.length != 3) {
             System.out.println("Usage: java FileSender <path/filename> "
-                    + "<rcvHostName> <rcvPort> <rcvFileName>");
+                    + "<rcvPort> <rcvFileName>");
             System.exit(1);
         }
 
