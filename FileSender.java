@@ -83,7 +83,7 @@ class FileSender {
 	private void closeConnection(InetAddress rcvAddress, DatagramSocket socket,
 			int seqNo) throws IOException {
 		byte[] outBuffer =
-				handler.createFinPacket(new byte[0], 0, seqNo);
+				handler.createFinPacket(seqNo);
 		DatagramPacket pktOut =
 				new DatagramPacket(outBuffer, outBuffer.length, rcvAddress, portNo);
 
@@ -121,18 +121,18 @@ class FileSender {
 	 */
 	private void sendUntilReplied(DatagramSocket socket, DatagramPacket pktOut,
 			DatagramPacket pktIn, int seqNo) throws IOException {
-		int count = 0;
 		do {
 			socket.send(pktOut);
 			try {
 				socket.receive(pktIn);
 			} catch (SocketTimeoutException e) {
-				if (count == 3) {
-					break;
-				}
-				count++;
 				continue;
 			}
 		} while (handler.isCorruptedReply(pktIn.getData(), seqNo));
+
+		// Corner case: packet is ACK and FIN
+		if (handler.isFin(pktOut.getData()) && !handler.isFin(pktIn.getData())) {
+			sendUntilReplied(socket, pktOut, pktIn, seqNo);
+		}
 	}
 }

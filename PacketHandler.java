@@ -58,10 +58,13 @@ class PacketHandler {
 	 * @param seqNo
 	 * @return
 	 */
-	public byte[] createFinPacket(byte[] data, int argDataLength, int seqNo) {
-		return createPacket(data, argDataLength, seqNo, 0, false, false, true);
+	public byte[] createFinPacket(int seqNo) {
+		return createPacket(new byte[0], 0, seqNo, 0, false, false, true);
 	}
 
+	public byte[] createAckFinPacket(int ackNo) {
+		return createPacket(new byte[0], 0, 0, ackNo, false, true, true);
+	}
 	/**
 	 * The generic method to create an outgoing packet with the arguments given
 	 * @param data
@@ -88,7 +91,6 @@ class PacketHandler {
 		flags = (byte) (isFin ? flags | 4 : flags | 0);
 
 		short dataLength = (short)argDataLength;
-		System.out.println("Created data length: " + dataLength);
 
         byte[] buffer = ByteBuffer.allocate(OFFSET_CHECKSUM)
         				.putInt(seqNo)
@@ -101,7 +103,6 @@ class PacketHandler {
         Checksum crc32 = new CRC32();
         crc32.update(buffer, 0, OFFSET_CHECKSUM);
         long rawChecksum = crc32.getValue();
-        System.out.println("Created cs: " + rawChecksum);
         byte[] checksum = ByteBuffer.allocate(8).putLong(rawChecksum).array();
 
         byte[] packet = new byte[1000];
