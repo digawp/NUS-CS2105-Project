@@ -6,6 +6,7 @@ import java.io.IOException;
 import java.net.DatagramPacket;
 import java.net.DatagramSocket;
 import java.net.InetAddress;
+import java.net.SocketTimeoutException;
 
 class FileSender {
 
@@ -52,6 +53,7 @@ class FileSender {
     void send() throws IOException, InterruptedException {
         InetAddress rcvAddress = InetAddress.getByName(hostname);
         DatagramSocket socket = new DatagramSocket();
+        socket.setSoTimeout(200);
 
         byte[] dataBuffer = new byte[PacketHandler.MAX_PAYLOAD_LENGTH];
 
@@ -71,11 +73,7 @@ class FileSender {
             DatagramPacket pktIn = new DatagramPacket(inBuffer, inBuffer.length);
 
             seqNo += bytesRead;
- 			do {
- 				socket.send(pktOut);
- 				socket.receive(pktIn);
- 				System.out.println("Received");
- 			} while (handler.isCorruptedReply(pktIn.getData(), seqNo));
+ 			sendUntilReplied(socket, pktOut, pktIn, seqNo);
         }
         closeConnection(rcvAddress, socket, seqNo);
         socket.close();
@@ -92,11 +90,7 @@ class FileSender {
 		byte[] inBuffer = new byte[1000];
 		DatagramPacket pktIn = new DatagramPacket(inBuffer, inBuffer.length);
 
-		do {
-			System.out.println("Sending FIN");
-			socket.send(pktOut);
-			socket.receive(pktIn);
-		} while (handler.isCorruptedReply(pktIn.getData(), seqNo));
+		sendUntilReplied(socket, pktOut, pktIn, seqNo);
 
 	}
 
@@ -114,12 +108,27 @@ class FileSender {
 		DatagramPacket pktIn = new DatagramPacket(inBuffer, inBuffer.length);
 
 		seqNo += data.length;
-		do {
-			socket.send(pktOut);
-			socket.receive(pktIn);
-			System.out.println("Syncing...");
-		} while (handler.isCorruptedReply(pktIn.getData(), seqNo));
+		sendUntilReplied(socket, pktOut, pktIn, seqNo);
 
 		return seqNo;
+	}
+
+	/**
+	 * @param socket
+	 * @param pktOut
+	 * @param pktIn
+	 * @param seqNo
+	 * @throws IOException
+	 */
+	private void sendUntilReplied(DatagramSocket socket, DatagramPacket pktOut,
+			DatagramPacket pktIn, int seqNo) throws IOException {
+		do {
+			socket.send(pktOut);
+			try {
+				socket.receive(pktIn);
+			} catch (SocketTimeoutException e) {
+				continue;
+			}
+		} while (handler.isCorruptedReply(pktIn.getData(), seqNo));
 	}
 }
