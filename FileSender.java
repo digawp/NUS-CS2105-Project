@@ -84,8 +84,7 @@ class FileSender {
  				socket.send(pktOut);
  				socket.receive(pktIn);
  				System.out.println("Received");
- 			} while (!handler.isGood(pktIn.getData()) ||
- 					!handler.isCorrectAck(pktIn.getData(), seqNo));
+ 			} while (handler.isCorrupted(pktIn.getData(), seqNo));
         }
         closeConnection(rcvAddress, socket);
         socket.close();
@@ -108,8 +107,7 @@ class FileSender {
 				System.out.println("Sending FIN");
 				socket.send(pktOut);
 				socket.receive(pktIn);
-			} while (!handler.isGood(pktIn.getData()) ||
-					!handler.isCorrectAck(pktIn.getData(), -2));
+			} while (handler.isCorrupted(pktIn.getData(), -2));
 		} catch (IOException e) {
 			// TODO Auto-generated catch block
 			e.printStackTrace();
@@ -135,8 +133,7 @@ class FileSender {
 				socket.send(pktOut);
 				socket.receive(pktIn);
 				System.out.println("Syncing...");
-			} while (!handler.isGood(pktIn.getData()) ||
-					!handler.isCorrectAck(pktIn.getData(), -1));
+			} while (handler.isCorrupted(pktIn.getData(), -1));
 		} catch (IOException e) {
 			// TODO Auto-generated catch block
 			e.printStackTrace();

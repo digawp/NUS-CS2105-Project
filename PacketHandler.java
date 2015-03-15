@@ -91,6 +91,10 @@ class PacketHandler {
 		return data;
 	}
 
+	public boolean isCorrupted(byte[] packet, int ackNo) {
+		return !(isGood(packet) && isCorrectAck(packet, ackNo));
+	}
+
 	/**
 	 * Checks whether the packet is corrupted or not by checking the checksum
 	 * @param packet
@@ -110,7 +114,7 @@ class PacketHandler {
 	 * @param ackNo
 	 * @return
 	 */
-	public boolean isCorrectAck(byte[] packet, int ackNo) {
+	private boolean isCorrectAck(byte[] packet, int ackNo) {
 		int rawAckNo = getAckNo(packet);
 		return rawAckNo == ackNo;
 	}
@@ -121,8 +125,7 @@ class PacketHandler {
 	 * @return
 	 */
 	public int getSeqNo(byte[] packet) {
-		byte[] header = ByteBuffer.wrap(packet, 0, HEADER_LENGTH).array();
-		int seqNo = ByteBuffer.wrap(header, OFFSET_SEQ_NO, 4).getInt();
+		int seqNo = ByteBuffer.wrap(packet, OFFSET_SEQ_NO, 4).getInt();
 		return seqNo;
 	}
 
@@ -132,8 +135,7 @@ class PacketHandler {
 	 * @return
 	 */
 	public int getAckNo(byte[] packet) {
-		byte[] header = ByteBuffer.wrap(packet, 0, HEADER_LENGTH).array();
-		int ackNo = ByteBuffer.wrap(header, OFFSET_ACK_NO, 4).getInt();
+		int ackNo = ByteBuffer.wrap(packet, OFFSET_ACK_NO, 4).getInt();
 		return ackNo;
 	}
 
