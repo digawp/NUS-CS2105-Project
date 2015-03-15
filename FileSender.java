@@ -83,17 +83,17 @@ class FileSender {
  				socket.send(pktOut);
  				socket.receive(pktIn);
  				System.out.println("Received");
- 			} while (handler.isCorrupted(pktIn.getData(), seqNo));
+ 			} while (handler.isCorruptedReply(pktIn.getData(), seqNo));
         }
-        closeConnection(rcvAddress, socket);
+        closeConnection(rcvAddress, socket, seqNo);
         socket.close();
         bis.close();
     }
 
-	private void closeConnection(InetAddress rcvAddress, DatagramSocket socket) {
-		// Special seqNo: -2 for FIN
+	private void closeConnection(InetAddress rcvAddress, DatagramSocket socket,
+			int seqNo) {
 		byte[] outBuffer =
-				handler.createFinPacket(new byte[0], 0, -2);
+				handler.createFinPacket(new byte[0], 0, seqNo);
 		DatagramPacket pktOut =
 				new DatagramPacket(outBuffer, outBuffer.length, rcvAddress, portNo);
 
@@ -101,12 +101,11 @@ class FileSender {
 		DatagramPacket pktIn = new DatagramPacket(inBuffer, inBuffer.length);
 
 		try {
-			// Special ackNo: -2 for FIN
 			do {
 				System.out.println("Sending FIN");
 				socket.send(pktOut);
 				socket.receive(pktIn);
-			} while (handler.isCorrupted(pktIn.getData(), -2));
+			} while (handler.isCorruptedReply(pktIn.getData(), seqNo));
 		} catch (IOException e) {
 			// TODO Auto-generated catch block
 			e.printStackTrace();
@@ -131,7 +130,7 @@ class FileSender {
 			socket.send(pktOut);
 			socket.receive(pktIn);
 			System.out.println("Syncing...");
-		} while (handler.isCorrupted(pktIn.getData(), seqNo));
+		} while (handler.isCorruptedReply(pktIn.getData(), seqNo));
 
 		return seqNo;
 	}

@@ -91,8 +91,17 @@ class PacketHandler {
 		return data;
 	}
 
-	public boolean isCorrupted(byte[] packet, int ackNo) {
+	public boolean isCorruptedReply(byte[] packet, int ackNo) {
 		return !(isGood(packet) && isCorrectAck(packet, ackNo));
+	}
+
+	public boolean isCorruptedOrDuplicate(byte[] packet, int seqNo) {
+		return !(isGood(packet) && isCorrectSeq(packet, seqNo));
+	}
+
+	private boolean isCorrectSeq(byte[] packet, int seqNo) {
+		int rawSeqNo = getSeqNo(packet);
+		return rawSeqNo == seqNo;
 	}
 
 	/**
