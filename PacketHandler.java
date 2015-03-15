@@ -3,7 +3,7 @@ import java.util.zip.CRC32;
 import java.util.zip.Checksum;
 
 /**
- * This class handles sending and receiving of packets
+ * This class handles packets management
  * @author Diga W
  *
  */
@@ -14,45 +14,78 @@ class PacketHandler {
 	private final static int HEADER_LENGTH = 11;
 	private final static int OFFSET_SEQ_NO = 0;
 	private final static int OFFSET_ACK_NO = 4;
-	private final static int OFFSET_TYPES = 8;
+	private final static int OFFSET_FLAGS = 8;
 	private final static int OFFSET_DATA_LENGTH = 9;
 	private final static int OFFSET_DATA = 11;
 	private final static int OFFSET_CHECKSUM = 992;
 
-	public byte[] createOutgoingPacket(byte[] data, int argDataLength, int seqNo) {
+	/**
+	 * Create a general outgoing packet
+	 * @param data
+	 * @param argDataLength
+	 * @param seqNo
+	 * @return
+	 */
+	public byte[] createOutgoingPacket(
+			byte[] data, int argDataLength, int seqNo) {
 		return createPacket(data, argDataLength, seqNo, 0, false, false, false);
 	}
 
+	/**
+	 * Create a SYN-flagged packet
+	 * @param data
+	 * @param argDataLength
+	 * @param seqNo
+	 * @return
+	 */
 	public byte[] createSynPacket(byte[] data, int argDataLength, int seqNo) {
 		return createPacket(data, argDataLength, seqNo, 0, true, false, false);
 	}
 
+	/**
+	 * Create a ACK-flagged packet
+	 * @param ackNo
+	 * @return
+	 */
 	public byte[] createAckPacket(int ackNo) {
 		return createPacket(new byte[0], 0, 0, ackNo, false, true, false);
 	}
 
+	/**
+	 * Create a FIN-flagged packet
+	 * @param data
+	 * @param argDataLength
+	 * @param seqNo
+	 * @return
+	 */
 	public byte[] createFinPacket(byte[] data, int argDataLength, int seqNo) {
 		return createPacket(data, argDataLength, seqNo, 0, false, false, true);
 	}
 
 	/**
-	 * Create an outgoing packet with the arguments given
+	 * The generic method to create an outgoing packet with the arguments given
 	 * @param data
+	 * @param argDataLength
+	 * @param seqNo
+	 * @param ackNo
+	 * @param isSyn
 	 * @param isAck
-	 * @return the packet to be sent, of length 1000 bytes
+	 * @param isFin
+	 * @return
 	 */
 	private byte[] createPacket(byte[] data, int argDataLength,
 			int seqNo, int ackNo,
 			boolean isSyn, boolean isAck, boolean isFin) {
-		if (data.length > MAX_PAYLOAD_LENGTH || argDataLength > MAX_PAYLOAD_LENGTH) {
+		if (data.length > MAX_PAYLOAD_LENGTH ||
+				argDataLength > MAX_PAYLOAD_LENGTH) {
 			throw new IllegalArgumentException(
 					"Data length cannot exceed MAX_PAYLOAD_LENGTH");
 		}
 
-		byte types = 0;
-		types = (byte) (isSyn ? types | 1 : types | 0);
-		types = (byte) (isAck ? types | 2 : types | 0);
-		types = (byte) (isFin ? types | 4 : types | 0);
+		byte flags = 0;
+		flags = (byte) (isSyn ? flags | 1 : flags | 0);
+		flags = (byte) (isAck ? flags | 2 : flags | 0);
+		flags = (byte) (isFin ? flags | 4 : flags | 0);
 
 		short dataLength = (short)argDataLength;
 		System.out.println("Created data length: " + dataLength);
@@ -60,7 +93,7 @@ class PacketHandler {
         byte[] buffer = ByteBuffer.allocate(OFFSET_CHECKSUM)
         				.putInt(seqNo)
         				.putInt(ackNo)
-        				.put(types)
+        				.put(flags)
         				.putShort(dataLength)
         				.put(data)
         				.array();
@@ -81,27 +114,37 @@ class PacketHandler {
 	/**
 	 * Get the payload of the packet
 	 * @param packet
-	 * @return the payload
+	 * @return
 	 */
 	public byte[] getPayload(byte[] packet) {
-		short dataLength = ByteBuffer.wrap(packet, OFFSET_DATA_LENGTH, 2).getShort();
+		short dataLength =
+				ByteBuffer.wrap(packet, OFFSET_DATA_LENGTH, 2).getShort();
 		System.out.println("Received data length: " + dataLength);
 		byte[] data = new byte[dataLength];
 		ByteBuffer.wrap(packet, OFFSET_DATA, dataLength).get(data);
 		return data;
 	}
 
+	/**
+	 * Checks if the packet's checksum matches the content and if
+	 * the acknowledgement number is correct
+	 * @param packet
+	 * @param ackNo
+	 * @return
+	 */
 	public boolean isCorruptedReply(byte[] packet, int ackNo) {
 		return !(isGood(packet) && isCorrectAck(packet, ackNo));
 	}
 
+	/**
+	 * Checks if the packet's checksum matches the content and if
+	 * the sequence number is not duplicate of previously received packet
+	 * @param packet
+	 * @param seqNo
+	 * @return
+	 */
 	public boolean isCorruptedOrDuplicate(byte[] packet, int seqNo) {
 		return !(isGood(packet) && isCorrectSeq(packet, seqNo));
-	}
-
-	private boolean isCorrectSeq(byte[] packet, int seqNo) {
-		int rawSeqNo = getSeqNo(packet);
-		return rawSeqNo == seqNo;
 	}
 
 	/**
@@ -118,7 +161,18 @@ class PacketHandler {
 	}
 
 	/**
-	 * Checks if the ACK number on the packet is the same as the one supplied
+	 * Checks if the sequence number on the packet is the same as supplied
+	 * @param packet
+	 * @param seqNo
+	 * @return
+	 */
+	private boolean isCorrectSeq(byte[] packet, int seqNo) {
+		int rawSeqNo = getSeqNo(packet);
+		return rawSeqNo == seqNo;
+	}
+
+	/**
+	 * Checks if the ACK number on the packet is the same as supplied
 	 * @param packet
 	 * @param ackNo
 	 * @return
@@ -148,20 +202,42 @@ class PacketHandler {
 		return ackNo;
 	}
 
+	/**
+	 * Check if the SYN flag is set
+	 * @param packet
+	 * @return
+	 */
 	public boolean isSyn(byte[] packet) {
-		return getType(packet, 1);
+		return getFlag(packet, 1);
 	}
 
+	/**
+	 * Check if the ACK flag is set
+	 * @param packet
+	 * @return
+	 */
 	public boolean isAck(byte[] packet) {
-		return getType(packet, 2);
+		return getFlag(packet, 2);
 	}
 
+	/**
+	 * Check if the FIN flag is set
+	 * @param packet
+	 * @return
+	 */
 	public boolean isFin(byte[] packet) {
-		return getType(packet, 4);
+		return getFlag(packet, 4);
 	}
 
-	private boolean getType(byte[] packet, int mask) {
-		byte rawTypes = ByteBuffer.wrap(packet, OFFSET_TYPES, 1).get();
+	/**
+	 * Check if the flag is true by masking the flag of the packet with
+	 * the supplied mask
+	 * @param packet
+	 * @param mask
+	 * @return
+	 */
+	private boolean getFlag(byte[] packet, int mask) {
+		byte rawTypes = ByteBuffer.wrap(packet, OFFSET_FLAGS, 1).get();
 		return (rawTypes & mask) == mask;
 	}
 }
