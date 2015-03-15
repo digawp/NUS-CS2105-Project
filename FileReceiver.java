@@ -67,8 +67,7 @@ class FileReceiver {
         	do {
         		socket.send(pktOut);
             	socket.receive(pktIn);
-            	System.out.println("Received seqNo " + handler.getSeqNo(pktIn.getData()));
-			} while (!handler.isGood(pktIn.getData()));
+        	} while (handler.isCorruptedOrDuplicate(pktIn.getData(), ackNo));
 
         	packet = pktIn.getData();
             // Write the data to disk
