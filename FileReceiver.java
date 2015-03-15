@@ -6,6 +6,7 @@ import java.io.IOException;
 import java.net.DatagramPacket;
 import java.net.DatagramSocket;
 import java.net.InetAddress;
+import java.net.SocketTimeoutException;
 
 class FileReceiver {
 
@@ -47,9 +48,15 @@ class FileReceiver {
         DatagramPacket pktOut = new DatagramPacket(
         		outBuffer, outBuffer.length, ipAddress, pktIn.getPort());
 
+        socket.setSoTimeout(200);
         while (!handler.isGood(pktIn.getData())) {
 			socket.send(pktOut);
-			socket.receive(pktIn);
+			try {
+				socket.receive(pktIn);
+			} catch (SocketTimeoutException e) {
+				continue;
+			}
+
 		}
 
         byte[] packet = pktIn.getData();
@@ -66,7 +73,11 @@ class FileReceiver {
         while (true) {
         	do {
         		socket.send(pktOut);
-            	socket.receive(pktIn);
+            	try {
+					socket.receive(pktIn);
+				} catch (SocketTimeoutException e) {
+					continue;
+				}
         	} while (handler.isCorruptedOrDuplicate(pktIn.getData(), ackNo));
 
         	packet = pktIn.getData();
