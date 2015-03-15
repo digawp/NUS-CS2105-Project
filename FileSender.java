@@ -69,38 +69,33 @@ class FileSender {
         BufferedInputStream bis = new BufferedInputStream(fis);
 
         int bytesRead;
+        int seqNo = 0;
         while ((bytesRead = bis.read(dataBuffer)) > 0) {
-        	// TODO: change seqNo and ackNo!
             byte[] outBuffer =
-            		handler.createOutgoingPacket(dataBuffer, bytesRead, 0, 0);
+            		handler.createOutgoingPacket(dataBuffer, bytesRead, seqNo);
             DatagramPacket pktOut =
             		new DatagramPacket(outBuffer, outBuffer.length, rcvAddress, portNo);
 
             byte[] inBuffer = new byte[1000];
             DatagramPacket pktIn = new DatagramPacket(inBuffer, inBuffer.length);
 
-            socket.send(pktOut);
-            socket.receive(pktIn);
-
-         // TODO: change ackNo!!!
- 			while (!handler.isGood(pktIn.getData()) ||
- 					!handler.isCorrectAck(pktIn.getData(), 0)) {
+            seqNo += bytesRead;
+ 			do {
  				socket.send(pktOut);
  				socket.receive(pktIn);
- 			}
-            Thread.sleep(100);
+ 				System.out.println("Received");
+ 			} while (!handler.isGood(pktIn.getData()) ||
+ 					!handler.isCorrectAck(pktIn.getData(), seqNo));
         }
+        closeConnection(rcvAddress, socket);
         socket.close();
         bis.close();
     }
 
-	private void setupConnection(InetAddress rcvAddress, DatagramSocket socket,
-			String fileName) {
-		byte[] data = fileName.getBytes();
-
-		// TODO: change seqNo!
+	private void closeConnection(InetAddress rcvAddress, DatagramSocket socket) {
+		// Special seqNo: -2 for FIN
 		byte[] outBuffer =
-				handler.createOutgoingPacket(data, data.length, 0, 0);
+				handler.createFinPacket(new byte[0], 0, -2);
 		DatagramPacket pktOut =
 				new DatagramPacket(outBuffer, outBuffer.length, rcvAddress, portNo);
 
@@ -108,13 +103,40 @@ class FileSender {
 		DatagramPacket pktIn = new DatagramPacket(inBuffer, inBuffer.length);
 
 		try {
-			socket.send(pktOut);
-			socket.receive(pktIn);
-			// TODO: change ackNo!!!
-			while (!handler.isGood(pktIn.getData()) ||
-					!handler.isCorrectAck(pktIn.getData(), 0)) {
+			// Special ackNo: -2 for FIN
+			do {
+				System.out.println("Sending FIN");
 				socket.send(pktOut);
-			}
+				socket.receive(pktIn);
+			} while (!handler.isGood(pktIn.getData()) ||
+					!handler.isCorrectAck(pktIn.getData(), -2));
+		} catch (IOException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
+	}
+
+	private void setupConnection(InetAddress rcvAddress, DatagramSocket socket,
+			String fileName) {
+		byte[] data = fileName.getBytes();
+
+		// Special seqNo: -1 for SYN
+		byte[] outBuffer =
+				handler.createSynPacket(data, data.length, -1);
+		DatagramPacket pktOut =
+				new DatagramPacket(outBuffer, outBuffer.length, rcvAddress, portNo);
+
+		byte[] inBuffer = new byte[1000];
+		DatagramPacket pktIn = new DatagramPacket(inBuffer, inBuffer.length);
+
+		try {
+			// Special ackNo: -1 for SYN
+			do {
+				socket.send(pktOut);
+				socket.receive(pktIn);
+				System.out.println("Syncing...");
+			} while (!handler.isGood(pktIn.getData()) ||
+					!handler.isCorrectAck(pktIn.getData(), -1));
 		} catch (IOException e) {
 			// TODO Auto-generated catch block
 			e.printStackTrace();

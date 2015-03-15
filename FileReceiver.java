@@ -41,15 +41,17 @@ class FileReceiver {
         byte[] inBuffer = new byte[1000];
         DatagramPacket pktIn = new DatagramPacket(inBuffer, inBuffer.length);
 
-        byte[] outBuffer = handler.createOutgoingPacket(null, 0, 0, 0);
-        DatagramPacket pktOut =
-        		new DatagramPacket(outBuffer, outBuffer.length, ipAddress, portNo);
-
         socket.receive(pktIn);
+        System.out.println("Incoming connection from " + pktIn.getPort());
+
+        byte[] outBuffer = handler.createSynPacket(new byte[0], 0, 0);
+        DatagramPacket pktOut = new DatagramPacket(
+        		outBuffer, outBuffer.length, ipAddress, pktIn.getPort());
+
         while (!handler.isGood(pktIn.getData())) {
-				socket.send(pktOut);
-				socket.receive(pktIn);
-			}
+			socket.send(pktOut);
+			socket.receive(pktIn);
+		}
 
         byte[] packet = pktIn.getData();
         String fileName = new String(handler.getPayload(packet));
@@ -58,25 +60,34 @@ class FileReceiver {
         BufferedOutputStream bos = new BufferedOutputStream(fos);
 
         int ackNo = handler.getSeqNo(packet);
-        outBuffer = handler.createOutgoingPacket(null, 0, 0, ackNo);
-        pktOut = new DatagramPacket(outBuffer, outBuffer.length, ipAddress, portNo);
+        outBuffer = handler.createAckPacket(ackNo);
+        pktOut = new DatagramPacket(outBuffer, outBuffer.length, ipAddress, pktIn.getPort());
 
         // TODO work on this
         while (true) {
-
-        	socket.send(pktOut);
-        	socket.receive(pktIn);
-        	while (!handler.isGood(pktIn.getData())) {
+        	do {
         		socket.send(pktOut);
             	socket.receive(pktIn);
-			}
+            	System.out.println("Received seqNo " + handler.getSeqNo(pktIn.getData()));
+			} while (!handler.isGood(pktIn.getData()));
+
         	packet = pktIn.getData();
             // Write the data to disk
         	byte[] data = handler.getPayload(packet);
             bos.write(data);
 
-            // TODO: If last packet.
-            if (data.length < PacketHandler.MAX_PAYLOAD_LENGTH) {
+            ackNo = handler.getSeqNo(packet) + data.length;
+            outBuffer = handler.createAckPacket(ackNo);
+            pktOut = new DatagramPacket(
+            		outBuffer, outBuffer.length, ipAddress, pktIn.getPort());
+
+            if (handler.isFin(packet)) {
+            	System.out.println("Sending FIN ACK");
+            	ackNo = handler.getSeqNo(packet);
+            	outBuffer = handler.createAckPacket(ackNo);
+            	pktOut = new DatagramPacket(
+            			outBuffer, outBuffer.length, ipAddress, pktIn.getPort());
+            	socket.send(pktOut);
                 System.out.println(fileName + " received.");
                 break;
             }

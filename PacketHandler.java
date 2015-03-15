@@ -1,5 +1,4 @@
 import java.nio.ByteBuffer;
-import java.util.BitSet;
 import java.util.zip.CRC32;
 import java.util.zip.Checksum;
 
@@ -50,18 +49,18 @@ class PacketHandler {
 					"Data length cannot exceed MAX_PAYLOAD_LENGTH");
 		}
 
-		BitSet types = new BitSet(3);
-		types.set(0, isSyn);
-		types.set(1, isAck);
-		types.set(2, isFin);
-		byte[] pktTypes = types.toByteArray();
+		byte types = 0;
+		types = (byte) (isSyn ? types | 1 : types | 0);
+		types = (byte) (isAck ? types | 2 : types | 0);
+		types = (byte) (isFin ? types | 4 : types | 0);
 
 		short dataLength = (short)argDataLength;
+		System.out.println("Created data length: " + dataLength);
 
         byte[] buffer = ByteBuffer.allocate(OFFSET_CHECKSUM)
         				.putInt(seqNo)
         				.putInt(ackNo)
-        				.put(pktTypes)
+        				.put(types)
         				.putShort(dataLength)
         				.put(data)
         				.array();
@@ -85,9 +84,10 @@ class PacketHandler {
 	 * @return the payload
 	 */
 	public byte[] getPayload(byte[] packet) {
-		byte[] header = ByteBuffer.wrap(packet, 0, HEADER_LENGTH).array();
-		short dataLength = ByteBuffer.wrap(header, OFFSET_DATA_LENGTH, 2).getShort();
-		byte[] data = ByteBuffer.wrap(packet, OFFSET_DATA, dataLength).array();
+		short dataLength = ByteBuffer.wrap(packet, OFFSET_DATA_LENGTH, 2).getShort();
+		System.out.println("Received data length: " + dataLength);
+		byte[] data = new byte[dataLength];
+		ByteBuffer.wrap(packet, OFFSET_DATA, dataLength).get(data);
 		return data;
 	}
 
@@ -101,8 +101,6 @@ class PacketHandler {
         crc32.update(packet, 0, OFFSET_CHECKSUM);
         long rawChecksum = crc32.getValue();
         long checksum = ByteBuffer.wrap(packet, OFFSET_CHECKSUM, 8).getLong();
-        System.out.println("Received cs: " + checksum);
-        System.out.println("Calculated cs: " + rawChecksum);
         return rawChecksum == checksum;
 	}
 
@@ -140,21 +138,19 @@ class PacketHandler {
 	}
 
 	public boolean isSyn(byte[] packet) {
-		return getType(packet, 0);
-	}
-
-	public boolean isAck(byte[] packet) {
 		return getType(packet, 1);
 	}
 
-	public boolean isFin(byte[] packet) {
+	public boolean isAck(byte[] packet) {
 		return getType(packet, 2);
 	}
 
-	private boolean getType(byte[] packet, int index) {
-		byte[] header = ByteBuffer.wrap(packet, 0, HEADER_LENGTH).array();
-		byte[] rawTypes = ByteBuffer.wrap(header, OFFSET_TYPES, 1).array();
-		BitSet types = BitSet.valueOf(rawTypes);
-		return types.get(index);
+	public boolean isFin(byte[] packet) {
+		return getType(packet, 4);
+	}
+
+	private boolean getType(byte[] packet, int mask) {
+		byte rawTypes = ByteBuffer.wrap(packet, OFFSET_TYPES, 1).get();
+		return (rawTypes & mask) == mask;
 	}
 }
