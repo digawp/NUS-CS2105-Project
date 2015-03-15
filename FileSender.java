@@ -61,15 +61,14 @@ class FileSender {
         InetAddress rcvAddress = InetAddress.getByName(hostname);
         DatagramSocket socket = new DatagramSocket();
 
-        setupConnection(rcvAddress, socket, destFileName);
-
         byte[] dataBuffer = new byte[PacketHandler.MAX_PAYLOAD_LENGTH];
 
         FileInputStream fis = new FileInputStream(srcFileName);
         BufferedInputStream bis = new BufferedInputStream(fis);
 
+        int seqNo = setupConnection(rcvAddress, socket, destFileName);
         int bytesRead;
-        int seqNo = 0;
+
         while ((bytesRead = bis.read(dataBuffer)) > 0) {
             byte[] outBuffer =
             		handler.createOutgoingPacket(dataBuffer, bytesRead, seqNo);
@@ -114,29 +113,26 @@ class FileSender {
 		}
 	}
 
-	private void setupConnection(InetAddress rcvAddress, DatagramSocket socket,
-			String fileName) {
+	private int setupConnection(InetAddress rcvAddress, DatagramSocket socket,
+			String fileName) throws IOException {
 		byte[] data = fileName.getBytes();
 
-		// Special seqNo: -1 for SYN
+		int seqNo = 0;
 		byte[] outBuffer =
-				handler.createSynPacket(data, data.length, -1);
+				handler.createSynPacket(data, data.length, seqNo);
 		DatagramPacket pktOut =
 				new DatagramPacket(outBuffer, outBuffer.length, rcvAddress, portNo);
 
 		byte[] inBuffer = new byte[1000];
 		DatagramPacket pktIn = new DatagramPacket(inBuffer, inBuffer.length);
 
-		try {
-			// Special ackNo: -1 for SYN
-			do {
-				socket.send(pktOut);
-				socket.receive(pktIn);
-				System.out.println("Syncing...");
-			} while (handler.isCorrupted(pktIn.getData(), -1));
-		} catch (IOException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
-		}
+		seqNo += data.length;
+		do {
+			socket.send(pktOut);
+			socket.receive(pktIn);
+			System.out.println("Syncing...");
+		} while (handler.isCorrupted(pktIn.getData(), seqNo));
+
+		return seqNo;
 	}
 }

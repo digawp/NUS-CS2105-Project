@@ -42,7 +42,6 @@ class FileReceiver {
         DatagramPacket pktIn = new DatagramPacket(inBuffer, inBuffer.length);
 
         socket.receive(pktIn);
-        System.out.println("Incoming connection from " + pktIn.getPort());
 
         byte[] outBuffer = handler.createSynPacket(new byte[0], 0, 0);
         DatagramPacket pktOut = new DatagramPacket(
@@ -54,16 +53,16 @@ class FileReceiver {
 		}
 
         byte[] packet = pktIn.getData();
-        String fileName = new String(handler.getPayload(packet));
+        byte[] data = handler.getPayload(packet);
+        String fileName = new String(data);
 
         FileOutputStream fos = new FileOutputStream(fileName);
         BufferedOutputStream bos = new BufferedOutputStream(fos);
 
-        int ackNo = handler.getSeqNo(packet);
+        int ackNo = handler.getSeqNo(packet) + data.length;
         outBuffer = handler.createAckPacket(ackNo);
         pktOut = new DatagramPacket(outBuffer, outBuffer.length, ipAddress, pktIn.getPort());
 
-        // TODO work on this
         while (true) {
         	do {
         		socket.send(pktOut);
@@ -73,7 +72,7 @@ class FileReceiver {
 
         	packet = pktIn.getData();
             // Write the data to disk
-        	byte[] data = handler.getPayload(packet);
+        	data = handler.getPayload(packet);
             bos.write(data);
 
             ackNo = handler.getSeqNo(packet) + data.length;
