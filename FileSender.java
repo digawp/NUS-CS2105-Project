@@ -49,14 +49,6 @@ class FileSender {
         handler = new PacketHandler();
     }
 
-    /**
-     * Packet format: 4 parts. First 4 bytes indicate length of file name,
-     * followed by the file name. Third part is another 4 bytes indicating the
-     * length of payload, followed by the payload.
-     *
-     * @throws IOException
-     * @throws InterruptedException
-     */
     void send() throws IOException, InterruptedException {
         InetAddress rcvAddress = InetAddress.getByName(hostname);
         DatagramSocket socket = new DatagramSocket();
@@ -91,7 +83,7 @@ class FileSender {
     }
 
 	private void closeConnection(InetAddress rcvAddress, DatagramSocket socket,
-			int seqNo) {
+			int seqNo) throws IOException {
 		byte[] outBuffer =
 				handler.createFinPacket(new byte[0], 0, seqNo);
 		DatagramPacket pktOut =
@@ -100,16 +92,12 @@ class FileSender {
 		byte[] inBuffer = new byte[1000];
 		DatagramPacket pktIn = new DatagramPacket(inBuffer, inBuffer.length);
 
-		try {
-			do {
-				System.out.println("Sending FIN");
-				socket.send(pktOut);
-				socket.receive(pktIn);
-			} while (handler.isCorruptedReply(pktIn.getData(), seqNo));
-		} catch (IOException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
-		}
+		do {
+			System.out.println("Sending FIN");
+			socket.send(pktOut);
+			socket.receive(pktIn);
+		} while (handler.isCorruptedReply(pktIn.getData(), seqNo));
+
 	}
 
 	private int setupConnection(InetAddress rcvAddress, DatagramSocket socket,
