@@ -91,7 +91,6 @@ class FileSender {
 		DatagramPacket pktIn = new DatagramPacket(inBuffer, inBuffer.length);
 
 		sendUntilReplied(socket, pktOut, pktIn, seqNo);
-
 	}
 
 	private int setupConnection(InetAddress rcvAddress, DatagramSocket socket,
@@ -122,11 +121,16 @@ class FileSender {
 	 */
 	private void sendUntilReplied(DatagramSocket socket, DatagramPacket pktOut,
 			DatagramPacket pktIn, int seqNo) throws IOException {
+		int count = 0;
 		do {
 			socket.send(pktOut);
 			try {
 				socket.receive(pktIn);
 			} catch (SocketTimeoutException e) {
+				if (count == 3) {
+					break;
+				}
+				count++;
 				continue;
 			}
 		} while (handler.isCorruptedReply(pktIn.getData(), seqNo));
