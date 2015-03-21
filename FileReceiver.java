@@ -86,7 +86,7 @@ class FileReceiver {
             bos.write(data);
 
             ackNo = handler.getSeqNo(packet) + data.length;
-            outBuffer = handler.createAckPacket(ackNo);
+            outBuffer = handler.createAckFinPacket(ackNo);
             pktOut = new DatagramPacket(
             		outBuffer, outBuffer.length, ipAddress, pktIn.getPort());
 

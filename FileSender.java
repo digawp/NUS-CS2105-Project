@@ -90,7 +90,7 @@ class FileSender {
 		byte[] inBuffer = new byte[1000];
 		DatagramPacket pktIn = new DatagramPacket(inBuffer, inBuffer.length);
 
-		sendUntilReplied(socket, pktOut, pktIn, seqNo);
+		sendUntilReplied(socket, pktOut, pktIn, seqNo, true);
 	}
 
 	private int setupConnection(InetAddress rcvAddress, DatagramSocket socket,
@@ -120,19 +120,22 @@ class FileSender {
 	 * @throws IOException
 	 */
 	private void sendUntilReplied(DatagramSocket socket, DatagramPacket pktOut,
-			DatagramPacket pktIn, int seqNo) throws IOException {
+			DatagramPacket pktIn, int seqNo, boolean... isLast) throws IOException {
+		int count = 0;
 		do {
 			socket.send(pktOut);
 			try {
 				socket.receive(pktIn);
 			} catch (SocketTimeoutException e) {
+				// If it is the last packet i.e. FIN ACK
+				if (isLast.length > 0 && isLast[0]) {
+					count++;
+					if (count > 2) {
+						break;
+					}
+				}
 				continue;
 			}
 		} while (handler.isCorruptedReply(pktIn.getData(), seqNo));
-
-		// Corner case: packet is ACK and FIN
-		if (handler.isFin(pktOut.getData()) && !handler.isFin(pktIn.getData())) {
-			sendUntilReplied(socket, pktOut, pktIn, seqNo);
-		}
 	}
 }
