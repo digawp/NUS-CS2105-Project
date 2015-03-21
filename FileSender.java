@@ -53,7 +53,7 @@ class FileSender {
     void send() throws IOException, InterruptedException {
         InetAddress rcvAddress = InetAddress.getByName(hostname);
         DatagramSocket socket = new DatagramSocket();
-        socket.setSoTimeout(200);
+        socket.setSoTimeout(100);
 
         byte[] dataBuffer = new byte[PacketHandler.MAX_PAYLOAD_LENGTH];
 

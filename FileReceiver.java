@@ -48,7 +48,7 @@ class FileReceiver {
         DatagramPacket pktOut = new DatagramPacket(
         		outBuffer, outBuffer.length, ipAddress, pktIn.getPort());
 
-        socket.setSoTimeout(200);
+        socket.setSoTimeout(20);
         while (!handler.isGood(pktIn.getData())) {
 			socket.send(pktOut);
 			try {
