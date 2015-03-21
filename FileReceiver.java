@@ -86,13 +86,16 @@ class FileReceiver {
             bos.write(data);
 
             ackNo = handler.getSeqNo(packet) + data.length;
-            outBuffer = handler.createAckFinPacket(ackNo);
+            outBuffer = handler.createAckPacket(ackNo);
             pktOut = new DatagramPacket(
             		outBuffer, outBuffer.length, ipAddress, pktIn.getPort());
 
             if (handler.isFin(packet)) {
-            	System.out.println("Sending FIN ACK");
-            	socket.send(pktOut);
+                System.out.println("Sending FIN ACK");
+                outBuffer = handler.createAckFinPacket(ackNo);
+                pktOut = new DatagramPacket(
+                		outBuffer, outBuffer.length, ipAddress, pktIn.getPort());
+                socket.send(pktOut);
                 System.out.println(fileName + " received.");
                 break;
             }
