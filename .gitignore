@@ -1,5 +1,7 @@
 *.class
 *.mp3
 *.pdf
+*.txt
+*.jpg
 test/
 out/
