@@ -48,7 +48,7 @@ class FileReceiver {
         DatagramPacket pktOut = new DatagramPacket(
                 outBuffer, outBuffer.length, ipAddress, pktIn.getPort());
 
-        socket.setSoTimeout(20);
+        socket.setSoTimeout(1);
         while (!handler.isGood(pktIn.getData())) {
             socket.send(pktOut);
             try {
@@ -82,7 +82,6 @@ class FileReceiver {
             } while (handler.isCorruptedOrDuplicate(pktIn.getData(), ackNo));
 
             if (handler.isFin(packet)) {
-                System.out.println("Sending FIN ACK");
                 outBuffer = handler.createAckFinPacket(ackNo);
                 pktOut = new DatagramPacket(
                         outBuffer, outBuffer.length, ipAddress, pktIn.getPort());

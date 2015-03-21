@@ -90,7 +90,7 @@ class FileSender {
         byte[] inBuffer = new byte[1000];
         DatagramPacket pktIn = new DatagramPacket(inBuffer, inBuffer.length);
 
-        sendUntilReplied(socket, pktOut, pktIn, seqNo, true);
+        sendUntilReplied(socket, pktOut, pktIn, seqNo);
     }
 
     private int setupConnection(InetAddress rcvAddress, DatagramSocket socket,
@@ -120,33 +120,14 @@ class FileSender {
      * @throws IOException
      */
     private void sendUntilReplied(DatagramSocket socket, DatagramPacket pktOut,
-            DatagramPacket pktIn, int seqNo, boolean... isLast) throws IOException {
-        int count = 0;
-        if (isLast.length > 0 && isLast[0]) {
-            System.out.println("Sending FIN");
-        }
+            DatagramPacket pktIn, int seqNo) throws IOException {
         do {
             socket.send(pktOut);
             try {
                 socket.receive(pktIn);
             } catch (SocketTimeoutException e) {
-                // If it is the last packet i.e. FIN ACK
-                if (isLast.length > 0 && isLast[0]) {
-                    count++;
-                    if (count > 2) {
-                        System.out.println("Bosen nunggu, assume received");
-                        return;
-                    }
-                }
                 continue;
             }
         } while (handler.isCorruptedReply(pktIn.getData(), seqNo));
-
-        // Corner case: FIN packet is dropped, the ACK received is from
-        // the previous packet, not the FIN
-        if (isLast.length > 0 && isLast[0] && !handler.isFin(pktIn.getData())) {
-            System.out.println("ACK received is not FIN, retrying...");
-            sendUntilReplied(socket, pktOut, pktIn, seqNo, isLast[0]);
-        }
     }
 }

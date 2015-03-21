@@ -11,7 +11,7 @@ class PacketHandler {
 
     public final static int MAX_PAYLOAD_LENGTH = 981;
 
-    private final static int HEADER_LENGTH = 11;
+    // private final static int HEADER_LENGTH = 11;
     private final static int OFFSET_SEQ_NO = 0;
     private final static int OFFSET_ACK_NO = 4;
     private final static int OFFSET_FLAGS = 8;
@@ -120,7 +120,6 @@ class PacketHandler {
     public byte[] getPayload(byte[] packet) {
         short dataLength =
                 ByteBuffer.wrap(packet, OFFSET_DATA_LENGTH, 2).getShort();
-        System.out.println("Received data length: " + dataLength);
         byte[] data = new byte[dataLength];
         ByteBuffer.wrap(packet, OFFSET_DATA, dataLength).get(data);
         return data;
