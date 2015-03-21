@@ -26,15 +26,15 @@ class FileSender {
         FileSender sender = new FileSender(args[0], "localhost", args[1], args[2]);
 
         try {
-        	Stopwatch stopwatch = new Stopwatch();
-        	stopwatch.start();
+            Stopwatch stopwatch = new Stopwatch();
+            stopwatch.start();
             sender.send();
             stopwatch.stop();
             System.out.println(args[0] + " is successfully sent as " + args[2]);
             long minutes = stopwatch.getElapsedTimeSecs() / 60;
             long seconds = stopwatch.getElapsedTimeSecs() % 60;
             System.out.println("Elapsed: " + minutes + " minutes "
-            			+ seconds + " seconds.");
+                        + seconds + " seconds.");
         } catch (IOException | InterruptedException e) {
             e.printStackTrace();
             System.exit(1);
@@ -65,77 +65,88 @@ class FileSender {
 
         while ((bytesRead = bis.read(dataBuffer)) > 0) {
             byte[] outBuffer =
-            		handler.createOutgoingPacket(dataBuffer, bytesRead, seqNo);
+                    handler.createOutgoingPacket(dataBuffer, bytesRead, seqNo);
             DatagramPacket pktOut =
-            		new DatagramPacket(outBuffer, outBuffer.length, rcvAddress, portNo);
+                    new DatagramPacket(outBuffer, outBuffer.length, rcvAddress, portNo);
 
             byte[] inBuffer = new byte[1000];
             DatagramPacket pktIn = new DatagramPacket(inBuffer, inBuffer.length);
 
             seqNo += bytesRead;
- 			sendUntilReplied(socket, pktOut, pktIn, seqNo);
+            sendUntilReplied(socket, pktOut, pktIn, seqNo);
         }
         closeConnection(rcvAddress, socket, seqNo);
         socket.close();
         bis.close();
     }
 
-	private void closeConnection(InetAddress rcvAddress, DatagramSocket socket,
-			int seqNo) throws IOException {
-		byte[] outBuffer =
-				handler.createFinPacket(seqNo);
-		DatagramPacket pktOut =
-				new DatagramPacket(outBuffer, outBuffer.length, rcvAddress, portNo);
+    private void closeConnection(InetAddress rcvAddress, DatagramSocket socket,
+            int seqNo) throws IOException {
+        byte[] outBuffer =
+                handler.createFinPacket(seqNo);
+        DatagramPacket pktOut =
+                new DatagramPacket(outBuffer, outBuffer.length, rcvAddress, portNo);
 
-		byte[] inBuffer = new byte[1000];
-		DatagramPacket pktIn = new DatagramPacket(inBuffer, inBuffer.length);
+        byte[] inBuffer = new byte[1000];
+        DatagramPacket pktIn = new DatagramPacket(inBuffer, inBuffer.length);
 
-		sendUntilReplied(socket, pktOut, pktIn, seqNo, true);
-	}
+        sendUntilReplied(socket, pktOut, pktIn, seqNo, true);
+    }
 
-	private int setupConnection(InetAddress rcvAddress, DatagramSocket socket,
-			String fileName) throws IOException {
-		byte[] data = fileName.getBytes();
+    private int setupConnection(InetAddress rcvAddress, DatagramSocket socket,
+            String fileName) throws IOException {
+        byte[] data = fileName.getBytes();
 
-		int seqNo = 0;
-		byte[] outBuffer =
-				handler.createSynPacket(data, data.length, seqNo);
-		DatagramPacket pktOut =
-				new DatagramPacket(outBuffer, outBuffer.length, rcvAddress, portNo);
+        int seqNo = 0;
+        byte[] outBuffer =
+                handler.createSynPacket(data, data.length, seqNo);
+        DatagramPacket pktOut =
+                new DatagramPacket(outBuffer, outBuffer.length, rcvAddress, portNo);
 
-		byte[] inBuffer = new byte[1000];
-		DatagramPacket pktIn = new DatagramPacket(inBuffer, inBuffer.length);
+        byte[] inBuffer = new byte[1000];
+        DatagramPacket pktIn = new DatagramPacket(inBuffer, inBuffer.length);
 
-		seqNo += data.length;
-		sendUntilReplied(socket, pktOut, pktIn, seqNo);
+        seqNo += data.length;
+        sendUntilReplied(socket, pktOut, pktIn, seqNo);
 
-		return seqNo;
-	}
+        return seqNo;
+    }
 
-	/**
-	 * @param socket
-	 * @param pktOut
-	 * @param pktIn
-	 * @param seqNo
-	 * @throws IOException
-	 */
-	private void sendUntilReplied(DatagramSocket socket, DatagramPacket pktOut,
-			DatagramPacket pktIn, int seqNo, boolean... isLast) throws IOException {
-		int count = 0;
-		do {
-			socket.send(pktOut);
-			try {
-				socket.receive(pktIn);
-			} catch (SocketTimeoutException e) {
-				// If it is the last packet i.e. FIN ACK
-				if (isLast.length > 0 && isLast[0]) {
-					count++;
-					if (count > 2) {
-						break;
-					}
-				}
-				continue;
-			}
-		} while (handler.isCorruptedReply(pktIn.getData(), seqNo));
-	}
+    /**
+     * @param socket
+     * @param pktOut
+     * @param pktIn
+     * @param seqNo
+     * @throws IOException
+     */
+    private void sendUntilReplied(DatagramSocket socket, DatagramPacket pktOut,
+            DatagramPacket pktIn, int seqNo, boolean... isLast) throws IOException {
+        int count = 0;
+        if (isLast.length > 0 && isLast[0]) {
+            System.out.println("Sending FIN");
+        }
+        do {
+            socket.send(pktOut);
+            try {
+                socket.receive(pktIn);
+            } catch (SocketTimeoutException e) {
+                // If it is the last packet i.e. FIN ACK
+                if (isLast.length > 0 && isLast[0]) {
+                    count++;
+                    if (count > 2) {
+                        System.out.println("Bosen nunggu, assume received");
+                        return;
+                    }
+                }
+                continue;
+            }
+        } while (handler.isCorruptedReply(pktIn.getData(), seqNo));
+
+        // Corner case: FIN packet is dropped, the ACK received is from
+        // the previous packet, not the FIN
+        if (isLast.length > 0 && isLast[0] && !handler.isFin(pktIn.getData())) {
+            System.out.println("ACK received is not FIN, retrying...");
+            sendUntilReplied(socket, pktOut, pktIn, seqNo, isLast[0]);
+        }
+    }
 }

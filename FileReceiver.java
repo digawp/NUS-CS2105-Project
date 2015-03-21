@@ -36,7 +36,7 @@ class FileReceiver {
     }
 
     void receive() throws IOException {
-    	InetAddress ipAddress = InetAddress.getByName("localhost");
+        InetAddress ipAddress = InetAddress.getByName("localhost");
         DatagramSocket socket = new DatagramSocket(portNo);
 
         byte[] inBuffer = new byte[1000];
@@ -46,18 +46,17 @@ class FileReceiver {
 
         byte[] outBuffer = handler.createSynPacket(new byte[0], 0, 0);
         DatagramPacket pktOut = new DatagramPacket(
-        		outBuffer, outBuffer.length, ipAddress, pktIn.getPort());
+                outBuffer, outBuffer.length, ipAddress, pktIn.getPort());
 
         socket.setSoTimeout(20);
         while (!handler.isGood(pktIn.getData())) {
-			socket.send(pktOut);
-			try {
-				socket.receive(pktIn);
-			} catch (SocketTimeoutException e) {
-				continue;
-			}
-
-		}
+            socket.send(pktOut);
+            try {
+                socket.receive(pktIn);
+            } catch (SocketTimeoutException e) {
+                continue;
+            }
+        }
 
         byte[] packet = pktIn.getData();
         byte[] data = handler.getPayload(packet);
@@ -66,39 +65,34 @@ class FileReceiver {
         FileOutputStream fos = new FileOutputStream(fileName);
         BufferedOutputStream bos = new BufferedOutputStream(fos);
 
-        int ackNo = handler.getSeqNo(packet) + data.length;
-        outBuffer = handler.createAckPacket(ackNo);
-        pktOut = new DatagramPacket(outBuffer, outBuffer.length, ipAddress, pktIn.getPort());
+        int ackNo = 0;
 
         while (true) {
-        	do {
-        		socket.send(pktOut);
-            	try {
-					socket.receive(pktIn);
-				} catch (SocketTimeoutException e) {
-					continue;
-				}
-        	} while (handler.isCorruptedOrDuplicate(pktIn.getData(), ackNo));
-
-        	packet = pktIn.getData();
-            // Write the data to disk
-        	data = handler.getPayload(packet);
-            bos.write(data);
-
             ackNo = handler.getSeqNo(packet) + data.length;
             outBuffer = handler.createAckPacket(ackNo);
             pktOut = new DatagramPacket(
-            		outBuffer, outBuffer.length, ipAddress, pktIn.getPort());
+                        outBuffer, outBuffer.length, ipAddress, pktIn.getPort());
+            do {
+                socket.send(pktOut);
+                try {
+                    socket.receive(pktIn);
+                } catch (SocketTimeoutException e) {
+                    continue;
+                }
+            } while (handler.isCorruptedOrDuplicate(pktIn.getData(), ackNo));
 
             if (handler.isFin(packet)) {
                 System.out.println("Sending FIN ACK");
                 outBuffer = handler.createAckFinPacket(ackNo);
                 pktOut = new DatagramPacket(
-                		outBuffer, outBuffer.length, ipAddress, pktIn.getPort());
+                        outBuffer, outBuffer.length, ipAddress, pktIn.getPort());
                 socket.send(pktOut);
                 System.out.println(fileName + " received.");
                 break;
             }
+            packet = pktIn.getData();
+            data = handler.getPayload(packet);
+            bos.write(data);
         }
         socket.close();
         bos.close();
