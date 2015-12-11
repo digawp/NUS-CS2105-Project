@@ -39,7 +39,7 @@ class FileReceiver {
         InetAddress ipAddress = InetAddress.getByName("localhost");
         DatagramSocket socket = new DatagramSocket(portNo);
 
-        byte[] inBuffer = new byte[1000];
+        byte[] inBuffer = new byte[PacketHandler.MAX_PACKET_SIZE];
         DatagramPacket pktIn = new DatagramPacket(inBuffer, inBuffer.length);
 
         socket.receive(pktIn);

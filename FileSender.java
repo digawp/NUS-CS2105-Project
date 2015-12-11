@@ -62,7 +62,7 @@ class FileSender {
             DatagramPacket pktOut =
                     new DatagramPacket(outBuffer, outBuffer.length, rcvAddress, portNo);
 
-            byte[] inBuffer = new byte[1000];
+            byte[] inBuffer = new byte[PacketHandler.MAX_PACKET_SIZE];
             DatagramPacket pktIn = new DatagramPacket(inBuffer, inBuffer.length);
 
             seqNo += bytesRead;
@@ -80,7 +80,7 @@ class FileSender {
         DatagramPacket pktOut =
                 new DatagramPacket(outBuffer, outBuffer.length, rcvAddress, portNo);
 
-        byte[] inBuffer = new byte[1000];
+        byte[] inBuffer = new byte[PacketHandler.MAX_PACKET_SIZE];
         DatagramPacket pktIn = new DatagramPacket(inBuffer, inBuffer.length);
 
         sendUntilReplied(socket, pktOut, pktIn, seqNo);
@@ -96,7 +96,7 @@ class FileSender {
         DatagramPacket pktOut =
                 new DatagramPacket(outBuffer, outBuffer.length, rcvAddress, portNo);
 
-        byte[] inBuffer = new byte[1000];
+        byte[] inBuffer = new byte[PacketHandler.MAX_PACKET_SIZE];
         DatagramPacket pktIn = new DatagramPacket(inBuffer, inBuffer.length);
 
         seqNo += data.length;

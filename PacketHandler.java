@@ -9,6 +9,7 @@ import java.util.zip.Checksum;
  */
 class PacketHandler {
 
+    public final static int MAX_PACKET_SIZE = 1000;
     public final static int MAX_PAYLOAD_LENGTH = 981;
 
     // private final static int HEADER_LENGTH = 11;
@@ -105,7 +106,7 @@ class PacketHandler {
         long rawChecksum = crc32.getValue();
         byte[] checksum = ByteBuffer.allocate(8).putLong(rawChecksum).array();
 
-        byte[] packet = new byte[1000];
+        byte[] packet = new byte[MAX_PACKET_SIZE];
         System.arraycopy(buffer, 0, packet, 0, OFFSET_CHECKSUM);
         System.arraycopy(checksum, 0, packet, OFFSET_CHECKSUM, 8);
 
