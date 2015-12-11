@@ -26,15 +26,8 @@ class FileSender {
         FileSender sender = new FileSender(args[0], "localhost", args[1], args[2]);
 
         try {
-            Stopwatch stopwatch = new Stopwatch();
-            stopwatch.start();
             sender.send();
-            stopwatch.stop();
             System.out.println(args[0] + " is successfully sent as " + args[2]);
-            long minutes = stopwatch.getElapsedTimeSecs() / 60;
-            long seconds = stopwatch.getElapsedTimeSecs() % 60;
-            System.out.println("Elapsed: " + minutes + " minutes "
-                        + seconds + " seconds.");
         } catch (IOException | InterruptedException e) {
             e.printStackTrace();
             System.exit(1);
